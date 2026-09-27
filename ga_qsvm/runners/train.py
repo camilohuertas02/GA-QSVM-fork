@@ -81,7 +81,7 @@ def build_train_fitness(kernel, dataset_split):
     raise ValueError(f"Unsupported kernel: {kernel}")
 
 
-def build_train_environment(dataset_name, params, machine_id, index, dataset_split):
+def build_train_environment(dataset_name, params, machine_id, index, dataset_split, opt_mode=1):
     train_qsvm = build_train_fitness(params.get("kernel", "pqk"), dataset_split)
 
     env_metadata = MetadataSynthesis(
@@ -107,6 +107,7 @@ def build_train_environment(dataset_name, params, machine_id, index, dataset_spl
         ),
         threshold_func=synthesis_threshold,
         wandb_config=build_train_wandb_config(dataset_name, params, machine_id, index),
+        opt_mode=opt_mode,
     )
 
 
@@ -124,6 +125,7 @@ def build_train_runner(dataset_loader, environment_factory):
         machine_id,
         start_index,
         kernel,
+        opt_mode,
     ):
         current_index = 0
         for num_qubits in qubits:
@@ -150,6 +152,7 @@ def build_train_runner(dataset_loader, environment_factory):
                     machine_id=machine_id,
                     index=current_index,
                     dataset_split=dataset_split,
+                    opt_mode=opt_mode,
                 )
                 env.evol(verbose=False, mode="parallel")
                 wandb.finish()

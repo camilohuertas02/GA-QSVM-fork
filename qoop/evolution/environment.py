@@ -61,6 +61,7 @@ class EEnvironment():
                  selection_func: types.FunctionType = selection.elitist_selection,
                  threshold_func: types.FunctionType = threshold.compilation_threshold,
                  wandb_config: dict = None,
+                 opt_mode: int = 1,
                  ) -> None:
         """_summary_
 
@@ -90,6 +91,7 @@ class EEnvironment():
         self.selection_func = selection_func
         self.threshold_func = threshold_func
         self.wandb_config = wandb_config
+        self.opt_mode = opt_mode
         if isinstance(metadata, Metadata):
             self.metadata = metadata
         # Eliminate this case because it will be many type of env_metadata
@@ -240,7 +242,12 @@ class EEnvironment():
             #####################
             ##### Selection #####
             #####################
-            self.circuits = self.selection_func(self.circuits, self.fitnesss)
+            if self.opt_mode == 1:
+                self.circuits = self.selection_func(self.circuits, self.fitnesss)
+            else:
+                self.circuits = self.selection_func(self.circuits, accuracies)
+
+
             #####################
             ##### Cross-over ####
             #####################
