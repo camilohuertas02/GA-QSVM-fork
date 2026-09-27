@@ -30,7 +30,11 @@ class TrainFidelityQSVMFitness:
         qsvc = QSVC(quantum_kernel=quantum_kernel)
         qsvc.fit(self.x_train, self.y_train)
         y_pred = qsvc.predict(self.x_test)
-        return accuracy_score(self.y_test, y_pred), 0.0
+
+        accuracy = accuracy_score(self.y_test, y_pred)
+        circuit_depth = quantum_circuit.depth()
+
+        return accuracy, circuit_depth, 0.0
 
 
 class TrainProjectedQSVMFitness:
@@ -60,7 +64,12 @@ class TrainProjectedQSVMFitness:
         qsvc = ProjectedQSVC(quantum_kernel=quantum_kernel)
         qsvc.fit(self.x_train, self.y_train)
         y_pred = qsvc.predict(self.x_test)
-        return accuracy_score(self.y_test, y_pred), 0.0
+
+
+        accuracy = accuracy_score(self.y_test, y_pred)
+        circuit_depth =  quantum_circuit.depth()
+
+        return accuracy, circuit_depth, 0.0
 
 
 def build_train_fitness(kernel, dataset_split):
