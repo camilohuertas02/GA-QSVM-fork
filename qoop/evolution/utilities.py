@@ -63,10 +63,11 @@ def calculate_strength_point(self):
 
 def sort_by_fitness(objects: list, fitnesss: list):
     if not isinstance(fitnesss[0], (list, tuple)):
+        print(">> Ordenando por Accuracy máximo")
         combined_list = list(zip(objects, fitnesss))
         sorted_combined_list = sorted(combined_list, key=lambda x: x[1], reverse=True)
         return [item[0] for item in sorted_combined_list]
-
+    print(">> Ordenando por frente de pareto (modo 1) ")
     n = len(objects)
     domination_counts = [0] * n
     dominated_lists = [[] for _ in range(n)]
