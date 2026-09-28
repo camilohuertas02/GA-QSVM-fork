@@ -395,7 +395,7 @@ class EEnvironment():
         if self.file_name is not None:
             file_name = self.file_name
         else:
-            file_name = f'{self.metadata.num_qubits}qubits_{self.fitness_func.__name__}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'
+            file_name = f'{self.metadata.num_qubits}qubits_{self.fitness_func.__name__}_{datetime.datetime.now().strftime("%Y-%m-%d")}'
     
         if not os.path.exists(file_name):
             os.mkdir(file_name)
