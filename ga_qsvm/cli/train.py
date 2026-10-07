@@ -20,6 +20,8 @@ def build_parser():
     parser.add_argument("--id", type=int, default=0)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--data", type=str, default="wine", choices=["digits", "wine", "cancer"])
+    parser.add_argument("--opt-mode", type=int, default=1, choices=[0, 1], help="0: Maximize Accuracy, 1: Pareto (Max Accuracy, Min Depth)")
+
     return parser
 
 
@@ -38,6 +40,7 @@ def main(argv=None):
         machine_id=args.id,
         start_index=args.start_index,
         kernel=args.kernel,
+        opt_mode=args.opt_mode,
     )
     return 0
 

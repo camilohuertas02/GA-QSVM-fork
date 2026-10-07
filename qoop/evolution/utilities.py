@@ -59,8 +59,52 @@ def calculate_strength_point(self):
         circuit.strength_point = scaled_strength_points[i]
     return
 
+
+
 def sort_by_fitness(objects: list, fitnesss: list):
-    combined_list = list(zip(objects, fitnesss))
-    sorted_combined_list = sorted(combined_list, key=lambda x: x[1], reverse=True)
-    sorted_object = [item[0] for item in sorted_combined_list]
-    return sorted_object
+    if not isinstance(fitnesss[0], (list, tuple)):
+        print(">> Ordenando por Accuracy máximo")
+        combined_list = list(zip(objects, fitnesss))
+        sorted_combined_list = sorted(combined_list, key=lambda x: x[1], reverse=True)
+        return [item[0] for item in sorted_combined_list]
+    print(">> Ordenando por frente de pareto (modo 1) ")
+    n = len(objects)
+    domination_counts = [0] * n
+    dominated_lists = [[] for _ in range(n)]
+    fronts = [[]]
+
+    for i in range(n):
+        acc_i, depth_i = fitnesss[i][0], fitnesss[i][1]
+        for j in range(n):
+            if i == j:
+                continue
+            acc_j, depth_j = fitnesss[j][0], fitnesss[j][1]
+            
+            if (acc_i >= acc_j and depth_i <= depth_j) and (acc_i > acc_j or depth_i < depth_j):
+                dominated_lists[i].append(j)
+            elif (acc_j >= acc_i and depth_j <= depth_i) and (acc_j > acc_i or depth_j < depth_i):
+                domination_counts[i] += 1
+        
+        if domination_counts[i] == 0:
+            fronts[0].append(i)
+
+    i = 0
+    while len(fronts[i]) > 0:
+        next_front = []
+        for idx in fronts[i]:
+            for dominated_idx in dominated_lists[idx]:
+                domination_counts[dominated_idx] -= 1
+                if domination_counts[dominated_idx] == 0:
+                    next_front.append(dominated_idx)
+        i += 1
+        fronts.append(next_front)
+
+    sorted_objects = []
+    for front in fronts:
+        if not front:
+            continue
+        front_sorted = sorted(front, key=lambda idx: fitnesss[idx][0], reverse=True)
+        for idx in front_sorted:
+            sorted_objects.append(objects[idx])
+
+    return sorted_objects

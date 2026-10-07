@@ -61,6 +61,7 @@ class EEnvironment():
                  selection_func: types.FunctionType = selection.elitist_selection,
                  threshold_func: types.FunctionType = threshold.compilation_threshold,
                  wandb_config: dict = None,
+                 opt_mode: int = 1,
                  ) -> None:
         """_summary_
 
@@ -90,6 +91,7 @@ class EEnvironment():
         self.selection_func = selection_func
         self.threshold_func = threshold_func
         self.wandb_config = wandb_config
+        self.opt_mode = opt_mode
         if isinstance(metadata, Metadata):
             self.metadata = metadata
         # Eliminate this case because it will be many type of env_metadata
@@ -105,6 +107,7 @@ class EEnvironment():
         #         prob_mutate=metadata.get('prob_mutate', []),
         #     )
         self.fitnesss: list = []
+        self.pareto_history: list = []
         self.eval_fitnesss: list = []  # Store evaluation accuracies
         self.circuits: typing.List[ECircuit] = []
         self.circuitss: typing.List[typing.List[ECircuit]] = []
@@ -163,54 +166,60 @@ class EEnvironment():
                 print("Generation " + str(self.metadata.current_generation) +
                       ", best score: " + str(np.max(self.fitnesss)))
             print(f"Running at generation {self.metadata.current_generation}")
-            
+
             #####################
             ######## Cost #######
             #####################
-            # new_population = multiple_compile(new_population)
             self.fitnesss = []
             self.eval_fitnesss = []
             if mode == 'parallel':
                 results_temp = multiple_compile(self.fitness_func, self.circuits)
-                # Extract validation and evaluation accuracies
-                for val_acc, eval_acc in results_temp:
-                    self.fitnesss.append(val_acc)
+                for val_acc, depth, eval_acc in results_temp:
+                    self.fitnesss.append((val_acc, depth))
                     self.eval_fitnesss.append(eval_acc)
             else:
                 for i in range(len(self.circuits)):
-                    val_acc, eval_acc = self.fitness_func(self.circuits[i])
-                    self.fitnesss.append(val_acc)
+                    val_acc, depth, eval_acc = self.fitness_func(self.circuits[i])
+                    self.fitnesss.append((val_acc, depth))
                     self.eval_fitnesss.append(eval_acc)
-                    
-            self.metadata.best_fitnesss.append(np.max(self.fitnesss))
+
+            accuracies = [f[0] for f in self.fitnesss]
+            best_acc = np.max(accuracies)
+            best_val_idx = np.argmax(accuracies)
+
+            self.metadata.best_fitnesss.append(best_acc)
+
+            self.pareto_history.append([(float(f[0]), int(f[1])) for f in self.fitnesss])
             
-            # Get evaluation accuracy of the circuit with best validation accuracy
-            best_val_idx = np.argmax(self.fitnesss)
             best_eval_for_best_val = self.eval_fitnesss[best_val_idx]
             
-            # Log metrics to wandb after each generation
             if self.wandb_config is not None:
                 wandb.log({
-                    "best_fitness": np.max(self.fitnesss),
-                    "average_fitness": np.mean(self.fitnesss),
+                    "best_fitness": best_acc,
+                    "average_fitness": np.mean(accuracies),
                     "eval": best_eval_for_best_val,
                     "generation": self.metadata.current_generation
                 })
 
-            self.best_circuits.append(self.circuits[np.argmax(self.fitnesss)].copy())
+            self.best_circuits.append(self.circuits[best_val_idx].copy())
             if self.best_circuit is None:
                 self.best_circuit = self.best_circuits[0].copy()
-            print(f"Val accuracies: {np.round(self.fitnesss, 4)}")
+                
+            print(f"Val accuracies: {np.round(accuracies, 4)}")
             print(f"Eval accuracies: {np.round(self.eval_fitnesss, 4)}")
-            print(f"Best val accuracy: {np.max(self.fitnesss):.4f}, corresponding eval accuracy: {best_eval_for_best_val:.4f}")
-            self.metadata.fitnessss.append(self.fitnesss)
+            print(f"Best val accuracy: {best_acc:.4f}, corresponding eval accuracy: {best_eval_for_best_val:.4f}")
+            
+            self.metadata.fitnessss.append(accuracies) 
+
             #####################
             #### Threshold ######
             #####################
-            if self.best_fitness < np.max(self.fitnesss):
-                self.best_circuit = self.circuits[np.argmax(self.fitnesss)].copy()
-                self.best_fitness = np.max(self.fitnesss)
+            if self.best_fitness < best_acc:
+                self.best_circuit = self.circuits[best_val_idx].copy()
+                self.best_fitness = best_acc
                 self.best_eval_fitness = best_eval_for_best_val
+
+
                 num_generations_without_improvement = 0
                 if hasattr(self, 'fitness_full_func'):
                     full_best_fitness = self.fitness_full_func(self.best_circuit)
@@ -233,7 +242,12 @@ class EEnvironment():
             #####################
             ##### Selection #####
             #####################
-            self.circuits = self.selection_func(self.circuits, self.fitnesss)
+            if self.opt_mode == 1:
+                self.circuits = self.selection_func(self.circuits, self.fitnesss)
+            else:
+                self.circuits = self.selection_func(self.circuits, accuracies)
+
+
             #####################
             ##### Cross-over ####
             #####################
@@ -398,6 +412,11 @@ class EEnvironment():
             json.dump(vars(self.metadata), file)
         with open(f"{os.path.join(file_name, 'funcs')}.json", "w") as file:
             json.dump(funcs, file)
+
+        with open(f"{os.path.join(file_name, 'pareto_history')}.json", "w") as file:
+            json.dump(self.pareto_history, file)
+    
+
         print(f"Saving circuit ...")
         print(len(self.circuitss))
         print(len(self.circuitss[0]))
